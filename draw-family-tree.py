@@ -124,15 +124,17 @@ class Family:
         if household.children:
             
             # Create a dummy node for this household         
-            print(f'\th{household.id}[shape=circle,label="",height=0.01,width=0.01 headport=s tailport=n]')
+            print(f'\t"h{household.id}"[shape=circle,label="",height=0.1,width=0.1 headport=s tailport=n];')
 
             # Now point the parents to this household
             for parent in household.parents:
-                print(f'\t\t"{parent.name}" -> h{household.id}')
+                print(f'\t\t"{parent.id}"[label="{parent.name}"];')
+                print(f'\t\t"{parent.id}" -> "h{household.id}";')
 
             # Now point the household to every child
             for child in household.children:
-                print(f'\t\th{household.id} -> "{child.name}"')
+                print(f'\t\t"{child.id}"[label="{child.name}"];')
+                print(f'\t\t"h{household.id}" -> "{child.id}";')
 
             # Now repeat the process for every child
             for child in household.children:
@@ -154,4 +156,4 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    family.draw(root_id="a1b2c2d4e5f5g9h4i1")    
+    family.draw(root_id="a1b2c2d4")    
