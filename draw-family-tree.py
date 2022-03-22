@@ -34,9 +34,10 @@ class Household:
     are part of a single household.
     '''
     
-    def __init__(self):
+    def __init__(self, id):
+        self.id = id
         self.parents = []
-        self.children = []
+        self.children = []        
 
     def add_child(self, parent):
         if parent in self.parents:
@@ -91,16 +92,21 @@ class Family:
             for index in range(len(person.households_as_parent) \
                     if person.households_as_parent else 0):
                 if not person.households_as_parent[index] in self.households:
-                    self.households[person.households_as_parent[index]] = Household()
+                    self.households[person.households_as_parent[index]] = Household(person.households_as_parent[index])
                 person.households_as_parent[index] = self.households[person.households_as_parent[index]]
                 person.households_as_parent[index].add_parent(person)
             if person.household_as_child:
                 if not person.household_as_child in self.households:
-                    self.households[person.household_as_child] = Household()
+                    self.households[person.household_as_child] = Household(person.household_as_child)
                 person.household_as_child = self.households[person.household_as_child]
                 person.household_as_child.add_child(person)
             
     def draw(self, root_id):
+
+        print('digraph {\n' + \
+            '\tgraph [splines=ortho, nodesep=0.1] ;\n' + \
+            '\tnode [shape=box];\n' + \
+            '\tedge [dir=none];\n')
 
         # Find the root
         if not root_id in self.people:
@@ -110,16 +116,29 @@ class Family:
         # So far draw only the first household
         self.draw_households_recusive(root.households_as_parent[0])
 
-    def draw_households_recusive(self, household, iteration=0):
+        print('}')
 
-        # Draw all the parents for this household
-        print((iteration*" ") + " | ".join([parent.name for parent in household.parents]))
+    def draw_households_recusive(self, household):
 
-        for child in household.children:
-            if child.households_as_parent:
-                self.draw_households_recusive(child.households_as_parent[0], iteration + 1)
-            else:
-                print(((iteration+1)*" ") + child.name)
+        # If this household has no children the recursion ends
+        if household.children:
+            
+            # Create a dummy node for this household         
+            print(f'\th{household.id}[shape=circle,label="",height=0.01,width=0.01 headport=s tailport=n]')
+
+            # Now point the parents to this household
+            for parent in household.parents:
+                print(f'\t\t"{parent.name}" -> h{household.id}')
+
+            # Now point the household to every child
+            for child in household.children:
+                print(f'\t\th{household.id} -> "{child.name}"')
+
+            # Now repeat the process for every child
+            for child in household.children:
+                if child.households_as_parent:
+                    for childs_household in child.households_as_parent:
+                        self.draw_households_recusive(childs_household)
         
             
 
@@ -135,4 +154,4 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    family.draw(root_id="a1b2c2d4e5f5g9")
+    family.draw(root_id="a1b2c2d4e5f5g9h4i1")    

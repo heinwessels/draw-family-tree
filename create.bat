@@ -1,0 +1,1 @@
+python draw-family-tree.py | dot -Tpng -o out.png
