@@ -104,9 +104,14 @@ class Family:
     def draw(self, root_id):
 
         print('digraph {\n' + \
-            '\tgraph [splines=ortho, nodesep=0.1] ;\n' + \
             '\tnode [shape=box];\n' + \
-            '\tedge [dir=none];\n')
+            '\tconcentrate=true;\n' + \
+            '\ranksep=0.01;\n' + \
+            # '\tgraph [center=true, margin=0.2, nodesep=0.1, ranksep=0.3;] ;\n' + \
+            # '\tsize="10,30";\n' + \
+            # '\tratio="compress";\n' + \
+            # '\tedge [dir=none];\n' + \
+            '')
 
         # Find the root
         if not root_id in self.people:
@@ -124,7 +129,7 @@ class Family:
         if household.children:
             
             # Create a dummy node for this household         
-            print(f'\t"h{household.id}"[shape=circle,label="",height=0.1,width=0.1 headport=s tailport=n];')
+            print(f'\t"h{household.id}"[shape=circle,label=".",height=0.01,width=0.01 headport=s tailport=n];')
 
             # Now point the parents to this household
             for parent in household.parents:
@@ -142,9 +147,7 @@ class Family:
                     for childs_household in child.households_as_parent:
                         self.draw_households_recusive(childs_household)
         
-            
-
-
+    
 
 
         
@@ -156,4 +159,5 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    family.draw(root_id="a1b2c2d4")    
+    # family.draw(root_id="a1b2c2d4e5f5g9h4")    
+    family.draw(root_id="a1b2c2d4e5f5")    

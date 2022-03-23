@@ -1,0 +1,1 @@
+python draw-family-tree.py | unflatten -f -l 2 | dot -Tpng -o out.png
