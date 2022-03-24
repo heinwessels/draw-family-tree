@@ -104,13 +104,14 @@ class Family:
     def draw(self, root_id):
 
         print('digraph {\n' + \
-            '\tnode [shape=box];\n' + \
+            '\tnode [shape=box,splines=false,ranksep=0.05];\n' + \
             '\tconcentrate=true;\n' + \
-            '\ranksep=0.01;\n' + \
-            # '\tgraph [center=true, margin=0.2, nodesep=0.1, ranksep=0.3;] ;\n' + \
+            '\tranksep=0.01;\n' + \
+            '\tgraph [center=true, margin=0.2, nodesep=0.1, ranksep=0.3;] ;\n' + \
             # '\tsize="10,30";\n' + \
             # '\tratio="compress";\n' + \
-            # '\tedge [dir=none];\n' + \
+            '\tedge [dir=none];\n' + \
+            '\tsplines=ortho;\n' + \
             '')
 
         # Find the root
@@ -123,34 +124,52 @@ class Family:
 
         print('}')
 
-    def draw_households_recusive(self, household):
+    def draw_households_recusive(self, household, depth=100):
+        
+        dummy_node_properties = f'fontsize = 0,' \
+                        'height = 0.03,' \
+                        'label = <&#x200B;>' \
+                        'style = invis, ' \
+                        'width = 0' # GraphVis Issue#1337 for zero sized unflattened node
 
         # If this household has no children the recursion ends
-        if household.children:
+        if household.children and depth > 0:
             
-            # Create a dummy node for this household         
-            print(f'\t"h{household.id}"[shape=circle,label=".",height=0.01,width=0.01 headport=s tailport=n];')
+            # Create a dummy node for this household 
+            print("\tnode [fixedsize = true]")
+            print(f'\t"h{household.id}"[{dummy_node_properties}];') 
 
+            print("\tnode [fixedsize = false]")
             # Now point the parents to this household
             for parent in household.parents:
                 print(f'\t\t"{parent.id}"[label="{parent.name}"];')
                 print(f'\t\t"{parent.id}" -> "h{household.id}";')
 
             # Now point the household to every child
+            previous_node = None    # The dummy connection
             for child in household.children:
                 print(f'\t\t"{child.id}"[label="{child.name}"];')
-                print(f'\t\t"h{household.id}" -> "{child.id}";')
+                if previous_node is not None:
+                    # Every child has a node above their node
+                    # to make a nice straight line
+                    print(f'\t\t"c{child.id}"[{dummy_node_properties}];') 
+                    print(f'\t\t"{previous_node}" -> "c{child.id}";')
+                    print(f'\t\t"c{child.id}" -> "{child.id}";')
+                    previous_node = f"c{child.id}"
+                    pass
+                else:
+                    # Except first one, where child connects to household
+                    print(f'\t\t"h{household.id}" -> "{child.id}";')
+                    previous_node = f"h{household.id}"
+                
+
+            print(f"\t\t{{rank=same;h{household.id};{';'.join('c'+child.id for child in household.children[1:])}}}")
 
             # Now repeat the process for every child
             for child in household.children:
                 if child.households_as_parent:
                     for childs_household in child.households_as_parent:
-                        self.draw_households_recusive(childs_household)
-        
-    
-
-
-        
+                        self.draw_households_recusive(childs_household, depth=depth-1)
 
 if __name__ == "__main__":
 
@@ -159,5 +178,6 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    # family.draw(root_id="a1b2c2d4e5f5g9h4")    
-    family.draw(root_id="a1b2c2d4e5f5")    
+    # family.draw(root_id="a1b2c2d4e5f5g9h4i1j1")    
+    family.draw(root_id="a1b2c2d4e5f5g9h4")    
+    # family.draw(root_id="a1b2c2d4e5")    
