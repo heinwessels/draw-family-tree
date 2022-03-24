@@ -101,7 +101,7 @@ class Family:
                 person.household_as_child = self.households[person.household_as_child]
                 person.household_as_child.add_child(person)
             
-    def draw(self, root_id):
+    def draw(self, root_id, depth=100):
 
         print('digraph {\n' + \
             '\tnode [shape=box,splines=false,ranksep=0.05];\n' + \
@@ -120,11 +120,11 @@ class Family:
         root = self.people[root_id]
 
         # So far draw only the first household
-        self.draw_households_recusive(root.households_as_parent[0])
+        self.draw_households_recusive(root.households_as_parent[0], depth)
 
         print('}')
 
-    def draw_households_recusive(self, household, depth=100):
+    def draw_households_recusive(self, household, depth):
         
         dummy_node_properties = f'fontsize = 0,' \
                         'height = 0.03,' \
@@ -146,24 +146,33 @@ class Family:
                 print(f'\t\t"{parent.id}" -> "h{household.id}";')
 
             # Now point the household to every child
-            previous_node = None    # The dummy connection
-            for child in household.children:
+            # We will do this wacky though: center, left, right, left, right...
+            previous_node = {"left":f"h{household.id}", "right":f"h{household.id}"}
+            position = "right"
+            for i in range(len(household.children)):
+                child = household.children[i]   # TODO Modify this to make hierarchical                
                 print(f'\t\t"{child.id}"[label="{child.name}"];')
-                if previous_node is not None:
-                    # Every child has a node above their node
-                    # to make a nice straight line
-                    print(f'\t\t"c{child.id}"[{dummy_node_properties}];') 
-                    print(f'\t\t"{previous_node}" -> "c{child.id}";')
-                    print(f'\t\t"c{child.id}" -> "{child.id}";')
-                    previous_node = f"c{child.id}"
-                    pass
-                else:
-                    # Except first one, where child connects to household
-                    print(f'\t\t"h{household.id}" -> "{child.id}";')
-                    previous_node = f"h{household.id}"
-                
-
-            print(f"\t\t{{rank=same;h{household.id};{';'.join('c'+child.id for child in household.children[1:])}}}")
+                print(f'\t\t"c{child.id}"[{dummy_node_properties}];')
+                if position == "center":
+                    # First child is in the center below parents                    
+                    print(f'\t\t"h{household.id}":s -> "c{child.id}":n;')
+                    previous_node["left"] = f"c{child.id}"
+                    previous_node["right"] = f"c{child.id}"
+                    position = "left"
+                else: # Position is left or right
+                    if position == "left":
+                        print(f'\t\t"{previous_node["left"]}":w -> "c{child.id}":e;')
+                        previous_node["left"] = f"c{child.id}"
+                        position = "right"
+                    else:
+                        print(f'\t\t"{previous_node["right"]}":e -> "c{child.id}":w;')
+                        previous_node["right"] = f"c{child.id}"                        
+                        # position = "left" # It works better placing all right?
+                print(f'\t\t"c{child.id}":s -> "{child.id}":n;')
+                    
+            
+            # Put all child connection nodes on same rank
+            print(f"\t\t{{rank=same;{';'.join('c'+child.id for child in household.children)}}}")
 
             # Now repeat the process for every child
             for child in household.children:
@@ -179,5 +188,5 @@ if __name__ == "__main__":
     family.generate()
 
     # family.draw(root_id="a1b2c2d4e5f5g9h4i1j1")    
-    family.draw(root_id="a1b2c2d4e5f5g9h4")    
-    # family.draw(root_id="a1b2c2d4e5")    
+    # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
+    family.draw(root_id="a1b2c2d4e5f5")
