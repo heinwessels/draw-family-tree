@@ -100,7 +100,55 @@ class Family:
                     self.households[person.household_as_child] = Household(person.household_as_child)
                 person.household_as_child = self.households[person.household_as_child]
                 person.household_as_child.add_child(person)
-            
+
+    def parents_of(self, person):
+        if person.household_as_child is None:
+            return None
+        return person.household_as_child.parents # Will retun None if there was none
+
+    def find_linage(self, ancestor, descendent, linage=None):
+        """
+        Finds a path between an ancestor and a descended. It will
+        Return a list a list of People, starting at the ancestor,
+        down to the descendend, signifying the direct linage.
+        The input is the _PEOPLE_ objects, not IDs.
+        
+        This is done by simply checking the descendents parents, 
+        until the ancestor is found.
+        
+        This is a recursive function that calls itself. I like those.
+        """
+        first = False
+        if linage is None:
+            # Probably first iteration. 
+            # Keep track of this so that we can add him at the end
+            first = True
+            linage = [] # Man, this is hacky
+
+        parents = self.parents_of(descendent)
+        if parents is None:
+            return None
+
+        for parent in parents:
+            if parent == ancestor:
+                # Should be the end of recursion!
+                # Start building the list on the way back
+                return [parent] + linage
+            else:
+                # This parent is not the ancestor we're looking for.
+                # Do the recursion thing by checking again.
+                parents_linage = self.find_linage(ancestor, parent, linage)
+                if parents_linage is not None:
+                    # This parent is in the right direction!
+                    if first:
+                        return parents_linage + [parent, descendent]
+                    return parents_linage + [parent]
+                # This parent is not in the linage. Ignore.
+
+        # None of these parents are in the linage. 
+        # Linage probably doesn't exist.
+        return None
+
     def draw(self, root_id, depth=100):
 
         print('digraph {\n' + \
@@ -191,6 +239,6 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
-    # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
+    family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
+    family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
     family.draw(root_id="a1b2c2d4e5f5")
