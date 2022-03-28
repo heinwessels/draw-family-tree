@@ -138,8 +138,8 @@ class Family:
             # Create a dummy node for this household 
             print("\tnode [fixedsize = true]")
             print(f'\t"h{household.id}"[{dummy_node_properties}];') 
-
             print("\tnode [fixedsize = false]")
+
             # Now point the parents to this household
             for parent in household.parents:
                 print(f'\t\t"{parent.id}"[label="{parent.name}"];')
@@ -148,17 +148,21 @@ class Family:
             # Now point the household to every child
             # We will do this wacky though: center, left, right, left, right...
             previous_node = {"left":f"h{household.id}", "right":f"h{household.id}"}
-            position = "right"
+            position = "center"
             for i in range(len(household.children)):
                 child = household.children[i]   # TODO Modify this to make hierarchical                
                 print(f'\t\t"{child.id}"[label="{child.name}"];')
+                
+                print("\tnode [fixedsize = true]")
                 print(f'\t\t"c{child.id}"[{dummy_node_properties}];')
+                print("\tnode [fixedsize = false]")
+                
                 if position == "center":
                     # First child is in the center below parents                    
                     print(f'\t\t"h{household.id}":s -> "c{child.id}":n;')
                     previous_node["left"] = f"c{child.id}"
                     previous_node["right"] = f"c{child.id}"
-                    position = "left"
+                    position = "right"
                 else: # Position is left or right
                     if position == "left":
                         print(f'\t\t"{previous_node["left"]}":w -> "c{child.id}":e;')
@@ -187,6 +191,6 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    # family.draw(root_id="a1b2c2d4e5f5g9h4i1j1")    
+    # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
     # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
     family.draw(root_id="a1b2c2d4e5f5")
