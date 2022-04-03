@@ -1,6 +1,7 @@
 import argparse
 import csv
 import copy
+from turtle import width
 
 class Person:
     '''
@@ -106,11 +107,11 @@ class Family:
             return None
         return person.household_as_child.parents # Will retun None if there was none
 
-    def find_linage(self, ancestor, descendent, linage=None):
+    def find_lineage(self, ancestor, descendent, lineage=None):
         """
         Finds a path between an ancestor and a descended. It will
         Return a list a list of People, starting at the ancestor,
-        down to the descendend, signifying the direct linage.
+        down to the descendend, signifying the direct lineage.
         The input is the _PEOPLE_ objects, not IDs.
         
         This is done by simply checking the descendents parents, 
@@ -119,11 +120,11 @@ class Family:
         This is a recursive function that calls itself. I like those.
         """
         first = False
-        if linage is None:
+        if lineage is None:
             # Probably first iteration. 
             # Keep track of this so that we can add him at the end
             first = True
-            linage = [] # Man, this is hacky
+            lineage = [] # Man, this is hacky
 
         parents = self.parents_of(descendent)
         if parents is None:
@@ -133,33 +134,38 @@ class Family:
             if parent == ancestor:
                 # Should be the end of recursion!
                 # Start building the list on the way back
-                return [parent] + linage
+                return [parent] + lineage
             else:
                 # This parent is not the ancestor we're looking for.
                 # Do the recursion thing by checking again.
-                parents_linage = self.find_linage(ancestor, parent, linage)
-                if parents_linage is not None:
+                parents_lineage = self.find_lineage(ancestor, parent, lineage)
+                if parents_lineage is not None:
                     # This parent is in the right direction!
                     if first:
-                        return parents_linage + [parent, descendent]
-                    return parents_linage + [parent]
-                # This parent is not in the linage. Ignore.
+                        return parents_lineage + [parent, descendent]
+                    return parents_lineage + [parent]
+                # This parent is not in the lineage. Ignore.
 
-        # None of these parents are in the linage. 
-        # Linage probably doesn't exist.
+        # None of these parents are in the lineage. 
+        # lineage probably doesn't exist.
         return None
 
-    def draw(self, root_id, depth=100):
+    def draw(self, root_id, depth=100, descendent_id=None, width=None):
 
         print('digraph {\n' + \
             '\tnode [shape=box,splines=false,ranksep=0.05];\n' + \
-            '\tconcentrate=true;\n' + \
-            '\tranksep=0.01;\n' + \
-            '\tgraph [center=true, margin=0.2, nodesep=0.1, ranksep=0.3;] ;\n' + \
+            # '\tconcentrate=true;\n' + \
+            # '\tranksep=0.01;\n' + \
+            # '\tgraph [center=true, margin=0.2, nodesep=0.1, ranksep=0.3;] ;\n' + \
+            '\tgraph [pad="0.01", nodesep="0.3", ranksep="0.01"] ;\n' + \
             # '\tsize="10,30";\n' + \
             # '\tratio="compress";\n' + \
             '\tedge [dir=none];\n' + \
             '\tsplines=ortho;\n' + \
+            '\toverlap=compress;\n' + \
+            '\tcompound=true;\n' + \
+            '\tsep="+1";\n' + \
+            '\tK="100";\n' + \
             '')
 
         # Find the root
@@ -167,70 +173,106 @@ class Family:
             raise RuntimeError(f"Root ID '{root_id}' does not exist")
         root = self.people[root_id]
 
+        lineage = None
+        if descendent_id is not None:
+            # We should focus on a lineage
+            if not descendent_id in self.people:
+                raise RuntimeError(f"Descendent ID '{descendent_id}' does not exist")
+            descendent = self.people[descendent_id]
+            lineage = self.find_lineage(root, descendent)
+            if not lineage:
+                raise RuntimeError(f"Could not find lineage between '{root.name} {root.surname}'"
+                            f" and {descendent.name} {descendent.surname}")
+
         # So far draw only the first household
-        self.draw_households_recusive(root.households_as_parent[0], depth)
+        if lineage:
+            self.draw_households_recusive(root.households_as_parent[0], depth, lineage={'width':width, 'lineage':lineage})
+        else:
+            self.draw_households_recusive(root.households_as_parent[0], depth)
 
         print('}')
 
-    def draw_households_recusive(self, household, depth):
-        
-        dummy_node_properties = f'fontsize = 0,' \
-                        'height = 0.03,' \
-                        'label = <&#x200B;>' \
-                        'style = invis, ' \
-                        'width = 0' # GraphVis Issue#1337 for zero sized unflattened node
+    def draw_households_recusive(self, household, depth, lineage=None):
 
         # If this household has no children the recursion ends
         if household.children and depth > 0:
-            
-            # Create a dummy node for this household 
-            print("\tnode [fixedsize = true]")
-            print(f'\t"h{household.id}"[{dummy_node_properties}];') 
-            print("\tnode [fixedsize = false]")
 
-            # Now point the parents to this household
-            for parent in household.parents:
-                print(f'\t\t"{parent.id}"[label="{parent.name}"];')
-                print(f'\t\t"{parent.id}" -> "h{household.id}";')
+            if lineage:
+                # We're cutting of branches around the supplied lineage
+                # Therefore subtract one from the lineage width if 
+                # none of the parents are in the lineage. And if we 
+                # reach zero, then we stop this branch
+                if not any(parent in lineage['lineage'] for parent in household.parents):
+                    # copy dictionary 
+                    lineage={'width':lineage['width'] - 1, 'lineage':lineage['lineage']}
+                    if lineage['width'] <= 0:
+                        # We reached the end of this branch. Stop drawing.
+                        return
 
-            # Now point the household to every child
-            # We will do this wacky though: center, left, right, left, right...
-            previous_node = {"left":f"h{household.id}", "right":f"h{household.id}"}
-            position = "center"
-            for i in range(len(household.children)):
-                child = household.children[i]   # TODO Modify this to make hierarchical                
-                print(f'\t\t"{child.id}"[label="{child.name}"];')
-                
-                print("\tnode [fixedsize = true]")
-                print(f'\t\t"c{child.id}"[{dummy_node_properties}];')
-                print("\tnode [fixedsize = false]")
-                
-                if position == "center":
-                    # First child is in the center below parents                    
-                    print(f'\t\t"h{household.id}":s -> "c{child.id}":n;')
-                    previous_node["left"] = f"c{child.id}"
-                    previous_node["right"] = f"c{child.id}"
-                    position = "right"
-                else: # Position is left or right
-                    if position == "left":
-                        print(f'\t\t"{previous_node["left"]}":w -> "c{child.id}":e;')
-                        previous_node["left"] = f"c{child.id}"
-                        position = "right"
-                    else:
-                        print(f'\t\t"{previous_node["right"]}":e -> "c{child.id}":w;')
-                        previous_node["right"] = f"c{child.id}"                        
-                        # position = "left" # It works better placing all right?
-                print(f'\t\t"c{child.id}":s -> "{child.id}":n;')
-                    
-            
-            # Put all child connection nodes on same rank
-            print(f"\t\t{{rank=same;{';'.join('c'+child.id for child in household.children)}}}")
+            # Draw!
+            self.draw_household(household)
 
             # Now repeat the process for every child
             for child in household.children:
                 if child.households_as_parent:
                     for childs_household in child.households_as_parent:
-                        self.draw_households_recusive(childs_household, depth=depth-1)
+                        self.draw_households_recusive(childs_household, depth=depth, lineage=lineage)
+
+
+    def draw_household(self, household):
+        """
+        Prints out the actual graphvis directivs
+        to vizualize this household
+        """
+
+        dummy_node_properties = f'fontsize = 0,' \
+                'height = 0.03,' \
+                'label = <&#x200B;>' \
+                'style = invis, ' \
+                'width = 0' # GraphVis Issue#1337 for zero sized unflattened node
+
+        # Create a dummy node for this household 
+        print("\tnode [fixedsize = true]")
+        print(f'\t"h{household.id}"[{dummy_node_properties}];') 
+        print("\tnode [fixedsize = false]")
+
+        # Now point the parents to this household
+        for parent in household.parents:
+            print(f'\t\t"{parent.id}"[label="{parent.name}"];')
+            print(f'\t\t"{parent.id}" -> "h{household.id}";')
+
+        # Now point the household to every child
+        # We will do this wacky though: center, left, right, left, right...
+        previous_node = {"left":f"h{household.id}", "right":f"h{household.id}"}
+        position = "center"
+        for i in range(len(household.children)):
+            child = household.children[i]   # TODO Modify this to make hierarchical                
+            print(f'\t\t"{child.id}"[label="{child.name}"];')
+            
+            print("\tnode [fixedsize = true]")
+            print(f'\t\t"c{child.id}"[{dummy_node_properties}];')
+            print("\tnode [fixedsize = false]")
+            
+            if position == "center":
+                # First child is in the center below parents                    
+                print(f'\t\t"h{household.id}":s -> "c{child.id}":n;')
+                previous_node["left"] = f"c{child.id}"
+                previous_node["right"] = f"c{child.id}"
+                position = "right"
+            else: # Position is left or right
+                if position == "left":
+                    print(f'\t\t"{previous_node["left"]}":w -> "c{child.id}":e;')
+                    previous_node["left"] = f"c{child.id}"
+                    position = "right"
+                else:
+                    print(f'\t\t"{previous_node["right"]}":e -> "c{child.id}":w;')
+                    previous_node["right"] = f"c{child.id}"                        
+                    # position = "left" # It works better placing all right?
+            print(f'\t\t"c{child.id}":s -> "{child.id}":n;')
+                
+
+        # Put all child connection nodes on same rank
+        print(f"\t\t{{rank=same;{';'.join('c'+child.id for child in household.children)}}}")
 
 if __name__ == "__main__":
 
@@ -239,6 +281,7 @@ if __name__ == "__main__":
     family.populate("output.csv")
     family.generate()
 
-    family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
-    family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
-    family.draw(root_id="a1b2c2d4e5f5")
+    # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
+    # family.draw(root_id="a1b2c2d4e5f5g9", depth=100)
+    # family.draw(root_id="a1b2c2d4e5f5", descendent_id="a1b2c2d4e5f5g9h4i1j1k1")
+    family.draw(root_id="a1b2c2d4", descendent_id="a1b2c2d4e5f5g9h4i1j1k1", width=1)
