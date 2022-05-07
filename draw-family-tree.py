@@ -192,7 +192,7 @@ class Family:
 
         print('}')
 
-    def draw_households_recusive(self, household, depth, lineage=None):
+    def draw_households_recusive(self, household, depth, generation=0, lineage=None):
 
         # If this household has no children the recursion ends
         if household.children and depth > 0:
@@ -210,16 +210,24 @@ class Family:
                         return
 
             # Draw!
-            self.draw_household(household)
+            self.draw_household(household, generation)
 
             # Now repeat the process for every child
             for child in household.children:
                 if child.households_as_parent:
                     for childs_household in child.households_as_parent:
-                        self.draw_households_recusive(childs_household, depth=depth, lineage=lineage)
+                        self.draw_households_recusive(
+                                childs_household, 
+                                depth=depth, 
+                                generation = generation - 1, 
+                                lineage=lineage)
+    
+    # Try to limit the amount of entries in every row
+    # Temporary really bad place for this
+    # Index [0] will be the first generation
+    generation_count = []
 
-
-    def draw_household(self, household):
+    def draw_household(self, household, generation):
         """
         Prints out the actual graphvis directivs
         to vizualize this household
@@ -272,7 +280,13 @@ class Family:
                 
 
         # Put all child connection nodes on same rank
-        print(f"\t\t{{rank=same;{';'.join('c'+child.id for child in household.children)}}}")
+        l = len(household.children)
+        step = 3
+        begin = 0
+        while begin < l:
+            end = min(begin + step, l)
+            print(f"\t\t{{rank=same;{';'.join('c'+child.id for child in household.children[begin:end])}}}")
+            begin += step
 
 if __name__ == "__main__":
 
@@ -283,5 +297,5 @@ if __name__ == "__main__":
 
     # family.draw(root_id="a1b2c2d4e5f5g9h4i1", depth=100)
     # family.draw(root_id="a1b2c2d4e5f5g9", depth=100)
-    # family.draw(root_id="a1b2c2d4e5f5", descendent_id="a1b2c2d4e5f5g9h4i1j1k1")
-    family.draw(root_id="a1b2c2d4", descendent_id="a1b2c2d4e5f5g9h4i1j1k1", width=1)
+    # family.draw(root_id="a1b2c2d4e5f5g9", descendent_id="a1b2c2d4e5f5g9h4i1j1k1", width=1)
+    family.draw(root_id="a1b2c2d4", descendent_id="a1b2c2d4e5f5g9h4i1j1k1", width=3)
